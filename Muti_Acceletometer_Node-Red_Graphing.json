@@ -1,0 +1,1949 @@
+[
+    {
+        "id": "71986219cfbb9ee9",
+        "type": "tab",
+        "label": "Accelerometers",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "36fdc02717399df3",
+        "type": "mqtt in",
+        "z": "71986219cfbb9ee9",
+        "name": "",
+        "topic": "COL-BC-001",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "25d14eea.0cdb52",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 130,
+        "y": 80,
+        "wires": [
+            [
+                "e2970c4da228efd3",
+                "76a8316337a2d687"
+            ]
+        ]
+    },
+    {
+        "id": "e2970c4da228efd3",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Combine Data",
+        "func": "// First off, we want to push all records to buckets depending on topic\n\n// ignore blank lines\nif (msg.payload.trim().length === 0) { return; }\n\n/* Init */\nlet topic = msg.topic;\n\n// get the current context for this topic, or init with blank object\nlet data = context.get(topic || [])\n\n\n\n\n/* Process Start & End Messages for a topic */\n\n\n// As 'ENDOFSTRING' messages arrive, push buckets to next step\nif (msg.payload.indexOf(\"ENDOFSTRING\") !== -1) {\n    // Sort the Array in case it is somehow out of order\n    data.sort(function(a, b) {\n        return a.bucket - b.bucket;\n    })\n\n    node.status({ fill: \"green\", shape: \"dot\", text: `Recieved: ${topic}` })\n    node.send({ topic: topic, payload: data });\n}\n\n// If the message is 's', clear the object\nif(msg.payload.indexOf(\"s\") !== -1){\n    data = [];\n    // Update context with new data\n    context.set(topic, data);\n    node.status({});\n    return;\n}\n\n\n// Split incoming messages, parse and add to array\nvar b = msg.payload.trim().split(\" \");\n\n\n// Push the parsed value into the series\ndata.push({ bucket: parseInt(b[0]), value: parseFloat(b[1])});\n\n\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 80,
+        "wires": [
+            [
+                "fab4396b34346332"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "fab4396b34346332",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Generate FFT",
+        "func": "\nlet maxY = Math.max.apply(Math, msg.payload.map(function(o) { return o.value}));\n\n\nvar series = [];\n\nseries = msg.payload.map( item => {\n    return {x: item.bucket, y: item.value};\n});\n\n\nlet fft = [{ series: [msg.topic], data: [series], labels: [] }];\n\n\n\nnode.status({ fill: \"green\", shape: \"dot\", text: `${msg.topic} max: ${maxY}` })\n\nreturn [{topic: msg.topic, payload: fft}, {topic: msg.topic, payload: maxY}];",
+        "outputs": 2,
+        "noerr": 0,
+        "x": 560,
+        "y": 80,
+        "wires": [
+            [
+                "6ac21022b1ee5da2"
+            ],
+            [
+                "fb3fafaff8e5c806"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph",
+            "Max Bucket"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "fb3fafaff8e5c806",
+        "type": "ui_gauge",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration Peak",
+        "group": "864efbfc739605b2",
+        "order": 11,
+        "width": "5",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Peak Vibration",
+        "label": "mm / s",
+        "format": "{{payload[1]}}",
+        "min": 0,
+        "max": "150",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 830,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "6ac21022b1ee5da2",
+        "type": "ui_chart",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration",
+        "group": "864efbfc739605b2",
+        "order": 2,
+        "width": "10",
+        "height": "4",
+        "label": "Motor Vibration",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": " ",
+        "interpolate": "bezier",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "8",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#cc0000",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 800,
+        "y": 60,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "76a8316337a2d687",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 1",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 320,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "3e1df66b0f2adc1b",
+        "type": "mqtt in",
+        "z": "71986219cfbb9ee9",
+        "name": "",
+        "topic": "COL-BC-002",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "25d14eea.0cdb52",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 130,
+        "y": 200,
+        "wires": [
+            [
+                "d76d0430e1e31ebe",
+                "ae695ef3504ddadc"
+            ]
+        ]
+    },
+    {
+        "id": "d76d0430e1e31ebe",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Combine Data",
+        "func": "// First off, we want to push all records to buckets depending on topic\n\n// ignore blank lines\nif (msg.payload.trim().length === 0) { return; }\n\n/* Init */\nlet topic = msg.topic;\n\n// get the current context for this topic, or init with blank object\nlet data = context.get(topic || [])\n\n\n\n\n/* Process Start & End Messages for a topic */\n\n\n// As 'ENDOFSTRING' messages arrive, push buckets to next step\nif (msg.payload.indexOf(\"ENDOFSTRING\") !== -1) {\n    // Sort the Array in case it is somehow out of order\n    data.sort(function(a, b) {\n        return a.bucket - b.bucket;\n    })\n\n    node.status({ fill: \"green\", shape: \"dot\", text: `Recieved: ${topic}` })\n    node.send({ topic: topic, payload: data });\n}\n\n// If the message is 's', clear the object\nif(msg.payload.indexOf(\"s\") !== -1){\n    data = [];\n    // Update context with new data\n    context.set(topic, data);\n    node.status({});\n    return;\n}\n\n\n// Split incoming messages, parse and add to array\nvar b = msg.payload.trim().split(\" \");\n\n\n// Push the parsed value into the series\ndata.push({ bucket: parseInt(b[0]), value: parseFloat(b[1])});\n\n\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 200,
+        "wires": [
+            [
+                "d93da0ddcd113799"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "d93da0ddcd113799",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Generate FFT",
+        "func": "\nlet maxY = Math.max.apply(Math, msg.payload.map(function(o) { return o.value}));\n\n\nvar series = [];\n\nseries = msg.payload.map( item => {\n    return {x: item.bucket, y: item.value};\n});\n\n\nlet fft = [{ series: [msg.topic], data: [series], labels: [] }];\n\n\n\nnode.status({ fill: \"green\", shape: \"dot\", text: `${msg.topic} max: ${maxY}` })\n\nreturn [{topic: msg.topic, payload: fft}, {topic: msg.topic, payload: maxY}];",
+        "outputs": 2,
+        "noerr": 0,
+        "x": 560,
+        "y": 200,
+        "wires": [
+            [
+                "f6d58928c4661b50",
+                "ba69d2f5adac52bd"
+            ],
+            [
+                "26dd59267502e9d5"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph",
+            "Max Bucket"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "26dd59267502e9d5",
+        "type": "ui_gauge",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration Peak",
+        "group": "ac2ce92745928adc",
+        "order": 11,
+        "width": "5",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Peak Vibration",
+        "label": "mm / s",
+        "format": "{{payload[1]}}",
+        "min": 0,
+        "max": "150",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 810,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "f6d58928c4661b50",
+        "type": "ui_chart",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration",
+        "group": "ac2ce92745928adc",
+        "order": 2,
+        "width": "10",
+        "height": "4",
+        "label": "Motor Vibration",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": " ",
+        "interpolate": "bezier",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "8",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#cc0000",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 800,
+        "y": 180,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ae695ef3504ddadc",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 320,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "ba69d2f5adac52bd",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 3",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 580,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "26c2c8011a63b6ff",
+        "type": "mqtt in",
+        "z": "71986219cfbb9ee9",
+        "name": "",
+        "topic": "COL-BC-003",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "25d14eea.0cdb52",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 130,
+        "y": 340,
+        "wires": [
+            [
+                "46628928f60a9d46",
+                "0ac3be2f20a62285"
+            ]
+        ]
+    },
+    {
+        "id": "46628928f60a9d46",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Combine Data",
+        "func": "// First off, we want to push all records to buckets depending on topic\n\n// ignore blank lines\nif (msg.payload.trim().length === 0) { return; }\n\n/* Init */\nlet topic = msg.topic;\n\n// get the current context for this topic, or init with blank object\nlet data = context.get(topic || [])\n\n\n\n\n/* Process Start & End Messages for a topic */\n\n\n// As 'ENDOFSTRING' messages arrive, push buckets to next step\nif (msg.payload.indexOf(\"ENDOFSTRING\") !== -1) {\n    // Sort the Array in case it is somehow out of order\n    data.sort(function(a, b) {\n        return a.bucket - b.bucket;\n    })\n\n    node.status({ fill: \"green\", shape: \"dot\", text: `Recieved: ${topic}` })\n    node.send({ topic: topic, payload: data });\n}\n\n// If the message is 's', clear the object\nif(msg.payload.indexOf(\"s\") !== -1){\n    data = [];\n    // Update context with new data\n    context.set(topic, data);\n    node.status({});\n    return;\n}\n\n\n// Split incoming messages, parse and add to array\nvar b = msg.payload.trim().split(\" \");\n\n\n// Push the parsed value into the series\ndata.push({ bucket: parseInt(b[0]), value: parseFloat(b[1])});\n\n\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 340,
+        "wires": [
+            [
+                "109c9527f7b2c47e"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "109c9527f7b2c47e",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Generate FFT",
+        "func": "\nlet maxY = Math.max.apply(Math, msg.payload.map(function(o) { return o.value}));\n\n\nvar series = [];\n\nseries = msg.payload.map( item => {\n    return {x: item.bucket, y: item.value};\n});\n\n\nlet fft = [{ series: [msg.topic], data: [series], labels: [] }];\n\n\n\nnode.status({ fill: \"green\", shape: \"dot\", text: `${msg.topic} max: ${maxY}` })\n\nreturn [{topic: msg.topic, payload: fft}, {topic: msg.topic, payload: maxY}];",
+        "outputs": 2,
+        "noerr": 0,
+        "x": 560,
+        "y": 340,
+        "wires": [
+            [
+                "8729b46c293f0a0e",
+                "d3667fa70212df07"
+            ],
+            [
+                "ec57a2e568aa5f72"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph",
+            "Max Bucket"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "ec57a2e568aa5f72",
+        "type": "ui_gauge",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration Peak",
+        "group": "b08b783e7f2c7065",
+        "order": 11,
+        "width": "5",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Peak Vibration",
+        "label": "mm / s",
+        "format": "{{payload[1]}}",
+        "min": 0,
+        "max": "150",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 810,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "8729b46c293f0a0e",
+        "type": "ui_chart",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration",
+        "group": "b08b783e7f2c7065",
+        "order": 2,
+        "width": "10",
+        "height": "4",
+        "label": "Motor Vibration",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": " ",
+        "interpolate": "bezier",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "8",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#cc0000",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 800,
+        "y": 320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "0ac3be2f20a62285",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 4",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 320,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "d3667fa70212df07",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 5",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 580,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "d89ff7b8affa66b0",
+        "type": "mqtt in",
+        "z": "71986219cfbb9ee9",
+        "name": "",
+        "topic": "COL-BC-004",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "25d14eea.0cdb52",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 130,
+        "y": 480,
+        "wires": [
+            [
+                "8873660bc8f23654",
+                "c187a3ff254f894a"
+            ]
+        ]
+    },
+    {
+        "id": "8873660bc8f23654",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Combine Data",
+        "func": "// First off, we want to push all records to buckets depending on topic\n\n// ignore blank lines\nif (msg.payload.trim().length === 0) { return; }\n\n/* Init */\nlet topic = msg.topic;\n\n// get the current context for this topic, or init with blank object\nlet data = context.get(topic || [])\n\n\n\n\n/* Process Start & End Messages for a topic */\n\n\n// As 'ENDOFSTRING' messages arrive, push buckets to next step\nif (msg.payload.indexOf(\"ENDOFSTRING\") !== -1) {\n    // Sort the Array in case it is somehow out of order\n    data.sort(function(a, b) {\n        return a.bucket - b.bucket;\n    })\n\n    node.status({ fill: \"green\", shape: \"dot\", text: `Recieved: ${topic}` })\n    node.send({ topic: topic, payload: data });\n}\n\n// If the message is 's', clear the object\nif(msg.payload.indexOf(\"s\") !== -1){\n    data = [];\n    // Update context with new data\n    context.set(topic, data);\n    node.status({});\n    return;\n}\n\n\n// Split incoming messages, parse and add to array\nvar b = msg.payload.trim().split(\" \");\n\n\n// Push the parsed value into the series\ndata.push({ bucket: parseInt(b[0]), value: parseFloat(b[1])});\n\n\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 480,
+        "wires": [
+            [
+                "755b1b79b00537be"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "755b1b79b00537be",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Generate FFT",
+        "func": "\nlet maxY = Math.max.apply(Math, msg.payload.map(function(o) { return o.value}));\n\n\nvar series = [];\n\nseries = msg.payload.map( item => {\n    return {x: item.bucket, y: item.value};\n});\n\n\nlet fft = [{ series: [msg.topic], data: [series], labels: [] }];\n\n\n\nnode.status({ fill: \"green\", shape: \"dot\", text: `${msg.topic} max: ${maxY}` })\n\nreturn [{topic: msg.topic, payload: fft}, {topic: msg.topic, payload: maxY}];",
+        "outputs": 2,
+        "noerr": 0,
+        "x": 560,
+        "y": 480,
+        "wires": [
+            [
+                "648715ab59562893",
+                "2ec460eca88bae41"
+            ],
+            [
+                "5676301fcf3dc922"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph",
+            "Max Bucket"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "5676301fcf3dc922",
+        "type": "ui_gauge",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration Peak",
+        "group": "585d25b879d22f14",
+        "order": 11,
+        "width": "5",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Peak Vibration",
+        "label": "mm / s",
+        "format": "{{payload[1]}}",
+        "min": 0,
+        "max": "150",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 810,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "648715ab59562893",
+        "type": "ui_chart",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration",
+        "group": "585d25b879d22f14",
+        "order": 2,
+        "width": "10",
+        "height": "4",
+        "label": "Motor Vibration",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": " ",
+        "interpolate": "bezier",
+        "nodata": "",
+        "dot": false,
+        "ymin": "1",
+        "ymax": "25",
+        "removeOlder": "8",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#cc0000",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 800,
+        "y": 460,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "c187a3ff254f894a",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 6",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 320,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "2ec460eca88bae41",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 7",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 580,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "fb144995343e7e87",
+        "type": "mqtt in",
+        "z": "71986219cfbb9ee9",
+        "name": "",
+        "topic": "COL-BC-005",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "25d14eea.0cdb52",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 130,
+        "y": 620,
+        "wires": [
+            [
+                "8c9adc7a078923a3",
+                "6bfadb0d6dc0539c"
+            ]
+        ]
+    },
+    {
+        "id": "8c9adc7a078923a3",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Combine Data",
+        "func": "// First off, we want to push all records to buckets depending on topic\n\n// ignore blank lines\nif (msg.payload.trim().length === 0) { return; }\n\n/* Init */\nlet topic = msg.topic;\n\n// get the current context for this topic, or init with blank object\nlet data = context.get(topic || [])\n\n\n\n\n/* Process Start & End Messages for a topic */\n\n\n// As 'ENDOFSTRING' messages arrive, push buckets to next step\nif (msg.payload.indexOf(\"ENDOFSTRING\") !== -1) {\n    // Sort the Array in case it is somehow out of order\n    data.sort(function(a, b) {\n        return a.bucket - b.bucket;\n    })\n\n    node.status({ fill: \"green\", shape: \"dot\", text: `Recieved: ${topic}` })\n    node.send({ topic: topic, payload: data });\n}\n\n// If the message is 's', clear the object\nif(msg.payload.indexOf(\"s\") !== -1){\n    data = [];\n    // Update context with new data\n    context.set(topic, data);\n    node.status({});\n    return;\n}\n\n\n// Split incoming messages, parse and add to array\nvar b = msg.payload.trim().split(\" \");\n\n\n// Push the parsed value into the series\ndata.push({ bucket: parseInt(b[0]), value: parseFloat(b[1])});\n\n\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 620,
+        "wires": [
+            [
+                "ed0d4c9518001961"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "ed0d4c9518001961",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Generate FFT",
+        "func": "\nlet maxY = Math.max.apply(Math, msg.payload.map(function(o) { return o.value}));\n\n\nvar series = [];\n\nseries = msg.payload.map( item => {\n    return {x: item.bucket, y: item.value};\n});\n\n\nlet fft = [{ series: [msg.topic], data: [series], labels: [] }];\n\n\n\nnode.status({ fill: \"green\", shape: \"dot\", text: `${msg.topic} max: ${maxY}` })\n\nreturn [{topic: msg.topic, payload: fft}, {topic: msg.topic, payload: maxY}];",
+        "outputs": 2,
+        "noerr": 0,
+        "x": 560,
+        "y": 620,
+        "wires": [
+            [
+                "1ed86a6bc4a2d34e",
+                "426ffbd189f9753c"
+            ],
+            [
+                "41bf1f04209746ce"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph",
+            "Max Bucket"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "41bf1f04209746ce",
+        "type": "ui_gauge",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration Peak",
+        "group": "889a70a004aa9aa9",
+        "order": 11,
+        "width": "5",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Peak Vibration",
+        "label": "mm / s",
+        "format": "{{payload[1]}}",
+        "min": 0,
+        "max": "150",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 810,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "1ed86a6bc4a2d34e",
+        "type": "ui_chart",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration",
+        "group": "889a70a004aa9aa9",
+        "order": 2,
+        "width": "10",
+        "height": "4",
+        "label": "Motor Vibration",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": " ",
+        "interpolate": "bezier",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "8",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#cc0000",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 800,
+        "y": 600,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "6bfadb0d6dc0539c",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 8",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 320,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "426ffbd189f9753c",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 9",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 580,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "631f3a83470b8cf8",
+        "type": "mqtt in",
+        "z": "71986219cfbb9ee9",
+        "name": "",
+        "topic": "COL-BC-006",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "25d14eea.0cdb52",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 130,
+        "y": 760,
+        "wires": [
+            [
+                "397ff92608610c82",
+                "d20f9e2a1e327953"
+            ]
+        ]
+    },
+    {
+        "id": "397ff92608610c82",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Combine Data",
+        "func": "// First off, we want to push all records to buckets depending on topic\n\n// ignore blank lines\nif (msg.payload.trim().length === 0) { return; }\n\n/* Init */\nlet topic = msg.topic;\n\n// get the current context for this topic, or init with blank object\nlet data = context.get(topic || [])\n\n\n\n\n/* Process Start & End Messages for a topic */\n\n\n// As 'ENDOFSTRING' messages arrive, push buckets to next step\nif (msg.payload.indexOf(\"ENDOFSTRING\") !== -1) {\n    // Sort the Array in case it is somehow out of order\n    data.sort(function(a, b) {\n        return a.bucket - b.bucket;\n    })\n\n    node.status({ fill: \"green\", shape: \"dot\", text: `Recieved: ${topic}` })\n    node.send({ topic: topic, payload: data });\n}\n\n// If the message is 's', clear the object\nif(msg.payload.indexOf(\"s\") !== -1){\n    data = [];\n    // Update context with new data\n    context.set(topic, data);\n    node.status({});\n    return;\n}\n\n\n// Split incoming messages, parse and add to array\nvar b = msg.payload.trim().split(\" \");\n\n\n// Push the parsed value into the series\ndata.push({ bucket: parseInt(b[0]), value: parseFloat(b[1])});\n\n\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 740,
+        "wires": [
+            [
+                "fb871ff042283930"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "fb871ff042283930",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Generate FFT",
+        "func": "\nlet maxY = Math.max.apply(Math, msg.payload.map(function(o) { return o.value}));\n\n\nvar series = [];\n\nseries = msg.payload.map( item => {\n    return {x: item.bucket, y: item.value};\n});\n\n\nlet fft = [{ series: [msg.topic], data: [series], labels: [] }];\n\n\n\nnode.status({ fill: \"green\", shape: \"dot\", text: `${msg.topic} max: ${maxY}` })\n\nreturn [{topic: msg.topic, payload: fft}, {topic: msg.topic, payload: maxY}];",
+        "outputs": 2,
+        "noerr": 0,
+        "x": 560,
+        "y": 740,
+        "wires": [
+            [
+                "ee8ee341a950356c",
+                "b59b7edc0913074a"
+            ],
+            [
+                "cd058e652166ff45"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph",
+            "Max Bucket"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "cd058e652166ff45",
+        "type": "ui_gauge",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration Peak",
+        "group": "a56645358df2a683",
+        "order": 11,
+        "width": "5",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Peak Vibration",
+        "label": "mm / s",
+        "format": "{{payload[1]}}",
+        "min": 0,
+        "max": "150",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 810,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "ee8ee341a950356c",
+        "type": "ui_chart",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration",
+        "group": "a56645358df2a683",
+        "order": 2,
+        "width": "10",
+        "height": "4",
+        "label": "Motor Vibration",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": " ",
+        "interpolate": "bezier",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "8",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#cc0000",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 800,
+        "y": 720,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "d20f9e2a1e327953",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 10",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 320,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "b59b7edc0913074a",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 11",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 560,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "7fd964b133cc026a",
+        "type": "mqtt in",
+        "z": "71986219cfbb9ee9",
+        "name": "",
+        "topic": "COL-BC-007",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "25d14eea.0cdb52",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 130,
+        "y": 860,
+        "wires": [
+            [
+                "53d55eccad42ccd7",
+                "fd39c49aaf751b52"
+            ]
+        ]
+    },
+    {
+        "id": "53d55eccad42ccd7",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Combine Data",
+        "func": "// First off, we want to push all records to buckets depending on topic\n\n// ignore blank lines\nif (msg.payload.trim().length === 0) { return; }\n\n/* Init */\nlet topic = msg.topic;\n\n// get the current context for this topic, or init with blank object\nlet data = context.get(topic || [])\n\n\n\n\n/* Process Start & End Messages for a topic */\n\n\n// As 'ENDOFSTRING' messages arrive, push buckets to next step\nif (msg.payload.indexOf(\"ENDOFSTRING\") !== -1) {\n    // Sort the Array in case it is somehow out of order\n    data.sort(function(a, b) {\n        return a.bucket - b.bucket;\n    })\n\n    node.status({ fill: \"green\", shape: \"dot\", text: `Recieved: ${topic}` })\n    node.send({ topic: topic, payload: data });\n}\n\n// If the message is 's', clear the object\nif(msg.payload.indexOf(\"s\") !== -1){\n    data = [];\n    // Update context with new data\n    context.set(topic, data);\n    node.status({});\n    return;\n}\n\n\n// Split incoming messages, parse and add to array\nvar b = msg.payload.trim().split(\" \");\n\n\n// Push the parsed value into the series\ndata.push({ bucket: parseInt(b[0]), value: parseFloat(b[1])});\n\n\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 840,
+        "wires": [
+            [
+                "f0d79aeaa50b5e29"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "f0d79aeaa50b5e29",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Generate FFT",
+        "func": "\nlet maxY = Math.max.apply(Math, msg.payload.map(function(o) { return o.value}));\n\n\nvar series = [];\n\nseries = msg.payload.map( item => {\n    return {x: item.bucket, y: item.value};\n});\n\n\nlet fft = [{ series: [msg.topic], data: [series], labels: [] }];\n\n\n\nnode.status({ fill: \"green\", shape: \"dot\", text: `${msg.topic} max: ${maxY}` })\n\nreturn [{topic: msg.topic, payload: fft}, {topic: msg.topic, payload: maxY}];",
+        "outputs": 2,
+        "noerr": 0,
+        "x": 560,
+        "y": 840,
+        "wires": [
+            [
+                "c32974964bc28b81",
+                "d27a2f69c3ac379d"
+            ],
+            [
+                "b3e4b0848b44b229"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph",
+            "Max Bucket"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "b3e4b0848b44b229",
+        "type": "ui_gauge",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration Peak",
+        "group": "27e5dcf1f812eeca",
+        "order": 11,
+        "width": "5",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Peak Vibration",
+        "label": "mm / s",
+        "format": "{{payload[1]}}",
+        "min": 0,
+        "max": "150",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 810,
+        "y": 860,
+        "wires": []
+    },
+    {
+        "id": "c32974964bc28b81",
+        "type": "ui_chart",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration",
+        "group": "27e5dcf1f812eeca",
+        "order": 2,
+        "width": "10",
+        "height": "4",
+        "label": "Motor Vibration",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": " ",
+        "interpolate": "bezier",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "8",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#cc0000",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 800,
+        "y": 820,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "fd39c49aaf751b52",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 12",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 320,
+        "y": 880,
+        "wires": []
+    },
+    {
+        "id": "d27a2f69c3ac379d",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 13",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 560,
+        "y": 880,
+        "wires": []
+    },
+    {
+        "id": "1d0b208ed8cb8b95",
+        "type": "mqtt in",
+        "z": "71986219cfbb9ee9",
+        "name": "",
+        "topic": "COL-BC-008",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "25d14eea.0cdb52",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 130,
+        "y": 960,
+        "wires": [
+            [
+                "53fa310dbe176cd7",
+                "f7f8f402f78bc8c3"
+            ]
+        ]
+    },
+    {
+        "id": "53fa310dbe176cd7",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Combine Data",
+        "func": "// First off, we want to push all records to buckets depending on topic\n\n// ignore blank lines\nif (msg.payload.trim().length === 0) { return; }\n\n/* Init */\nlet topic = msg.topic;\n\n// get the current context for this topic, or init with blank object\nlet data = context.get(topic || [])\n\n\n\n\n/* Process Start & End Messages for a topic */\n\n\n// As 'ENDOFSTRING' messages arrive, push buckets to next step\nif (msg.payload.indexOf(\"ENDOFSTRING\") !== -1) {\n    // Sort the Array in case it is somehow out of order\n    data.sort(function(a, b) {\n        return a.bucket - b.bucket;\n    })\n\n    node.status({ fill: \"green\", shape: \"dot\", text: `Recieved: ${topic}` })\n    node.send({ topic: topic, payload: data });\n}\n\n// If the message is 's', clear the object\nif(msg.payload.indexOf(\"s\") !== -1){\n    data = [];\n    // Update context with new data\n    context.set(topic, data);\n    node.status({});\n    return;\n}\n\n\n// Split incoming messages, parse and add to array\nvar b = msg.payload.trim().split(\" \");\n\n\n// Push the parsed value into the series\ndata.push({ bucket: parseInt(b[0]), value: parseFloat(b[1])});\n\n\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 940,
+        "wires": [
+            [
+                "adc0f9051b6add56"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "adc0f9051b6add56",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Generate FFT",
+        "func": "\nlet maxY = Math.max.apply(Math, msg.payload.map(function(o) { return o.value}));\n\n\nvar series = [];\n\nseries = msg.payload.map( item => {\n    return {x: item.bucket, y: item.value};\n});\n\n\nlet fft = [{ series: [msg.topic], data: [series], labels: [] }];\n\n\n\nnode.status({ fill: \"green\", shape: \"dot\", text: `${msg.topic} max: ${maxY}` })\n\nreturn [{topic: msg.topic, payload: fft}, {topic: msg.topic, payload: maxY}];",
+        "outputs": 2,
+        "noerr": 0,
+        "x": 560,
+        "y": 940,
+        "wires": [
+            [
+                "a578ff345b964aca",
+                "04ab27e816c97ffc"
+            ],
+            [
+                "630e643544757393"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph",
+            "Max Bucket"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "630e643544757393",
+        "type": "ui_gauge",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration Peak",
+        "group": "4187135f9f230c17",
+        "order": 11,
+        "width": "5",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Peak Vibration",
+        "label": "mm / s",
+        "format": "{{payload[1]}}",
+        "min": 0,
+        "max": "150",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 810,
+        "y": 960,
+        "wires": []
+    },
+    {
+        "id": "a578ff345b964aca",
+        "type": "ui_chart",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration",
+        "group": "4187135f9f230c17",
+        "order": 2,
+        "width": "10",
+        "height": "4",
+        "label": "Motor Vibration",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": " ",
+        "interpolate": "bezier",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "8",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#cc0000",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 800,
+        "y": 920,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "f7f8f402f78bc8c3",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 14",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 320,
+        "y": 980,
+        "wires": []
+    },
+    {
+        "id": "04ab27e816c97ffc",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 15",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 560,
+        "y": 980,
+        "wires": []
+    },
+    {
+        "id": "fff49c22942cec4e",
+        "type": "mqtt in",
+        "z": "71986219cfbb9ee9",
+        "name": "",
+        "topic": "COL-BC-009",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "25d14eea.0cdb52",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 130,
+        "y": 1040,
+        "wires": [
+            [
+                "893c3acc8de72d3b",
+                "a3b69d2e0bbf00a5"
+            ]
+        ]
+    },
+    {
+        "id": "893c3acc8de72d3b",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Combine Data",
+        "func": "// First off, we want to push all records to buckets depending on topic\n\n// ignore blank lines\nif (msg.payload.trim().length === 0) { return; }\n\n/* Init */\nlet topic = msg.topic;\n\n// get the current context for this topic, or init with blank object\nlet data = context.get(topic || [])\n\n\n\n\n/* Process Start & End Messages for a topic */\n\n\n// As 'ENDOFSTRING' messages arrive, push buckets to next step\nif (msg.payload.indexOf(\"ENDOFSTRING\") !== -1) {\n    // Sort the Array in case it is somehow out of order\n    data.sort(function(a, b) {\n        return a.bucket - b.bucket;\n    })\n\n    node.status({ fill: \"green\", shape: \"dot\", text: `Recieved: ${topic}` })\n    node.send({ topic: topic, payload: data });\n}\n\n// If the message is 's', clear the object\nif(msg.payload.indexOf(\"s\") !== -1){\n    data = [];\n    // Update context with new data\n    context.set(topic, data);\n    node.status({});\n    return;\n}\n\n\n// Split incoming messages, parse and add to array\nvar b = msg.payload.trim().split(\" \");\n\n\n// Push the parsed value into the series\ndata.push({ bucket: parseInt(b[0]), value: parseFloat(b[1])});\n\n\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 1020,
+        "wires": [
+            [
+                "0332a3e26c0fdaf0"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "0332a3e26c0fdaf0",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Generate FFT",
+        "func": "\nlet maxY = Math.max.apply(Math, msg.payload.map(function(o) { return o.value}));\n\n\nvar series = [];\n\nseries = msg.payload.map( item => {\n    return {x: item.bucket, y: item.value};\n});\n\n\nlet fft = [{ series: [msg.topic], data: [series], labels: [] }];\n\n\n\nnode.status({ fill: \"green\", shape: \"dot\", text: `${msg.topic} max: ${maxY}` })\n\nreturn [{topic: msg.topic, payload: fft}, {topic: msg.topic, payload: maxY}];",
+        "outputs": 2,
+        "noerr": 0,
+        "x": 560,
+        "y": 1020,
+        "wires": [
+            [
+                "1b55ec89fc3ffa79",
+                "aabe255c960d492d"
+            ],
+            [
+                "7f54af5a1a1c0e30"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph",
+            "Max Bucket"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "7f54af5a1a1c0e30",
+        "type": "ui_gauge",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration Peak",
+        "group": "41ec1dc45d8d4a9c",
+        "order": 11,
+        "width": "5",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Peak Vibration",
+        "label": "mm / s",
+        "format": "{{payload[1]}}",
+        "min": 0,
+        "max": "150",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 810,
+        "y": 1040,
+        "wires": []
+    },
+    {
+        "id": "1b55ec89fc3ffa79",
+        "type": "ui_chart",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration",
+        "group": "41ec1dc45d8d4a9c",
+        "order": 2,
+        "width": "10",
+        "height": "4",
+        "label": "Motor Vibration",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": " ",
+        "interpolate": "bezier",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "8",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#cc0000",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 800,
+        "y": 1000,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "a3b69d2e0bbf00a5",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 16",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 320,
+        "y": 1060,
+        "wires": []
+    },
+    {
+        "id": "aabe255c960d492d",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 17",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 560,
+        "y": 1060,
+        "wires": []
+    },
+    {
+        "id": "fd49abd46c3ad372",
+        "type": "mqtt in",
+        "z": "71986219cfbb9ee9",
+        "name": "",
+        "topic": "COL-BC-010",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "25d14eea.0cdb52",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 130,
+        "y": 1140,
+        "wires": [
+            [
+                "7dc61e359180f8c0",
+                "3f7508de6126f981"
+            ]
+        ]
+    },
+    {
+        "id": "7dc61e359180f8c0",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Combine Data",
+        "func": "// First off, we want to push all records to buckets depending on topic\n\n// ignore blank lines\nif (msg.payload.trim().length === 0) { return; }\n\n/* Init */\nlet topic = msg.topic;\n\n// get the current context for this topic, or init with blank object\nlet data = context.get(topic || [])\n\n\n\n\n/* Process Start & End Messages for a topic */\n\n\n// As 'ENDOFSTRING' messages arrive, push buckets to next step\nif (msg.payload.indexOf(\"ENDOFSTRING\") !== -1) {\n    // Sort the Array in case it is somehow out of order\n    data.sort(function(a, b) {\n        return a.bucket - b.bucket;\n    })\n\n    node.status({ fill: \"green\", shape: \"dot\", text: `Recieved: ${topic}` })\n    node.send({ topic: topic, payload: data });\n}\n\n// If the message is 's', clear the object\nif(msg.payload.indexOf(\"s\") !== -1){\n    data = [];\n    // Update context with new data\n    context.set(topic, data);\n    node.status({});\n    return;\n}\n\n\n// Split incoming messages, parse and add to array\nvar b = msg.payload.trim().split(\" \");\n\n\n// Push the parsed value into the series\ndata.push({ bucket: parseInt(b[0]), value: parseFloat(b[1])});\n\n\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 1120,
+        "wires": [
+            [
+                "4c178e3a13bdd214"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "4c178e3a13bdd214",
+        "type": "function",
+        "z": "71986219cfbb9ee9",
+        "name": "Generate FFT",
+        "func": "\nlet maxY = Math.max.apply(Math, msg.payload.map(function(o) { return o.value}));\n\n\nvar series = [];\n\nseries = msg.payload.map( item => {\n    return {x: item.bucket, y: item.value};\n});\n\n\nlet fft = [{ series: [msg.topic], data: [series], labels: [] }];\n\n\n\nnode.status({ fill: \"green\", shape: \"dot\", text: `${msg.topic} max: ${maxY}` })\n\nreturn [{topic: msg.topic, payload: fft}, {topic: msg.topic, payload: maxY}];",
+        "outputs": 2,
+        "noerr": 0,
+        "x": 560,
+        "y": 1120,
+        "wires": [
+            [
+                "d4ab5fbcf89826a2",
+                "e62f2914ca3ea52d"
+            ],
+            [
+                "17afb119de81682b"
+            ]
+        ],
+        "inputLabels": [
+            "Raw Data"
+        ],
+        "outputLabels": [
+            "FFT Graph",
+            "Max Bucket"
+        ],
+        "icon": "node-red-node-smooth/smooth.png"
+    },
+    {
+        "id": "17afb119de81682b",
+        "type": "ui_gauge",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration Peak",
+        "group": "e6abb955a73fc996",
+        "order": 11,
+        "width": "5",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Peak Vibration",
+        "label": "mm / s",
+        "format": "{{payload[1]}}",
+        "min": 0,
+        "max": "150",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 810,
+        "y": 1140,
+        "wires": []
+    },
+    {
+        "id": "d4ab5fbcf89826a2",
+        "type": "ui_chart",
+        "z": "71986219cfbb9ee9",
+        "name": "London Hammer Vibration",
+        "group": "e6abb955a73fc996",
+        "order": 2,
+        "width": "10",
+        "height": "4",
+        "label": "Motor Vibration",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": " ",
+        "interpolate": "bezier",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "8",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#cc0000",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 800,
+        "y": 1100,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "3f7508de6126f981",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 18",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 320,
+        "y": 1160,
+        "wires": []
+    },
+    {
+        "id": "e62f2914ca3ea52d",
+        "type": "debug",
+        "z": "71986219cfbb9ee9",
+        "name": "debug 19",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 560,
+        "y": 1160,
+        "wires": []
+    },
+    {
+        "id": "25d14eea.0cdb52",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "russ-mckay.dyndns.org",
+        "port": "1886",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "864efbfc739605b2",
+        "type": "ui_group",
+        "name": "COL-BC-001",
+        "tab": "3e03df20c24320d0",
+        "order": 1,
+        "disp": true,
+        "width": "27",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "ac2ce92745928adc",
+        "type": "ui_group",
+        "name": "COL-BC-002",
+        "tab": "3e03df20c24320d0",
+        "order": 2,
+        "disp": true,
+        "width": "27",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "b08b783e7f2c7065",
+        "type": "ui_group",
+        "name": "COL-BC-003",
+        "tab": "3e03df20c24320d0",
+        "order": 3,
+        "disp": true,
+        "width": "27",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "585d25b879d22f14",
+        "type": "ui_group",
+        "name": "COL-BC-004",
+        "tab": "3e03df20c24320d0",
+        "order": 4,
+        "disp": true,
+        "width": "27",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "889a70a004aa9aa9",
+        "type": "ui_group",
+        "name": "COL-BC-005",
+        "tab": "3e03df20c24320d0",
+        "order": 5,
+        "disp": true,
+        "width": "27",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "a56645358df2a683",
+        "type": "ui_group",
+        "name": "COL-BC-006",
+        "tab": "3e03df20c24320d0",
+        "order": 6,
+        "disp": true,
+        "width": "27",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "27e5dcf1f812eeca",
+        "type": "ui_group",
+        "name": "COL-BC-007",
+        "tab": "3e03df20c24320d0",
+        "order": 7,
+        "disp": true,
+        "width": "27",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "4187135f9f230c17",
+        "type": "ui_group",
+        "name": "COL-BC-008",
+        "tab": "3e03df20c24320d0",
+        "order": 8,
+        "disp": true,
+        "width": "27",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "41ec1dc45d8d4a9c",
+        "type": "ui_group",
+        "name": "COL-BC-009",
+        "tab": "3e03df20c24320d0",
+        "order": 9,
+        "disp": true,
+        "width": "27",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "e6abb955a73fc996",
+        "type": "ui_group",
+        "name": "COL-BC-010",
+        "tab": "3e03df20c24320d0",
+        "order": 10,
+        "disp": true,
+        "width": "27",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "3e03df20c24320d0",
+        "type": "ui_tab",
+        "name": "Vibration Sensors",
+        "icon": "dashboard",
+        "order": 3,
+        "disabled": false,
+        "hidden": false
+    }
+]
